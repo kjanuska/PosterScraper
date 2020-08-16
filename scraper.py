@@ -10,17 +10,18 @@ from progress.bar import ChargingBar
 
 BASE_IMAGE_LINK = "https://image.tmdb.org/t/p/original"
 API_KEY = "4bbd5cbd9da6580bf6bda048d43d8338"
-LIST_ID = "7054979"
+MOVIE_LIST_ID = "7054979"
+TV_LIST_ID = "7054980"
 
 root = tkinter.Tk()
 root.withdraw()
 p = Path(tkinter.filedialog.askdirectory())
 
 
-def get_movies():
+def get_poster_links(list_id):
     url = (
         "https://api.themoviedb.org/3/list/"
-        + LIST_ID
+        + list_id
         + "?api_key="
         + API_KEY
         + "&language=en-US"
@@ -28,38 +29,18 @@ def get_movies():
 
     response = requests.get(url)
     list = response.json()
-    movies = []
-    for movie in list["items"]:
-        movies.append((movie["id"], movie["title"]))
 
-    return movies
-
-
-def get_poster_links():
-    movies = get_movies()
-    bar = ChargingBar("Replacing movie ids with poster urls", max=len(movies))
-    poster_links = []
-    for movie in movies:
-        url = (
-            "https://api.themoviedb.org/3/movie/"
-            + str(movie[0])
-            + "/images?api_key="
-            + API_KEY
-            + "&language=en-US&include_image_language=en%2Cnull"
+    media = []
+    for item in list["items"]:
+        media.append(
+            (BASE_IMAGE_LINK + item["poster_path"], item["title"].replace(":", " -"))
         )
-        response = requests.get(url)
-        image_links = response.json()
-        poster_link = image_links["posters"][0]["file_path"]
-        poster_link = BASE_IMAGE_LINK + poster_link
-        poster_links.append((poster_link, movie[1].replace(":", " -")))
-        bar.next()
 
-    bar.finish()
-    return poster_links
+    return media
 
 
 def download_posters():
-    poster_links = get_poster_links()
+    poster_links = get_poster_links(TV_LIST_ID)
     bar = ChargingBar("Downloading posters", max=len(poster_links))
     for poster in poster_links:
         poster_filepath = p.joinpath(poster[1] + ".jpg")
