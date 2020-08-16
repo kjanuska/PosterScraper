@@ -1,68 +1,82 @@
-import csv
 import requests
 import shutil
 import os.path
+import pathlib
+from pathlib import Path
 import tkinter
 from tkinter import filedialog
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.firefox.options import Options
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+import time
+from progress.bar import ChargingBar
 
-BASE_LINK = "https://www.themoviedb.org/movie/"
-
-options = Options()
-options.headless = True
+BASE_IMAGE_LINK = "https://image.tmdb.org/t/p/original"
+API_KEY = "4bbd5cbd9da6580bf6bda048d43d8338"
+LIST_ID = "7054979"
 
 root = tkinter.Tk()
 root.withdraw()
-path = tkinter.filedialog.askdirectory()
+p = Path(tkinter.filedialog.askdirectory())
 
-with open("movie_ids.csv") as ids:
-    reader = csv.reader(ids)
-    data = list(reader)
 
-# data[n][0] = id
-# data[n][1] = name
+def get_movies():
+    url = (
+        "https://api.themoviedb.org/3/list/"
+        + LIST_ID
+        + "?api_key="
+        + API_KEY
+        + "&language=en-US"
+    )
 
-driver = webdriver.Firefox()
-driver.wait = WebDriverWait(driver, 10)
+    response = requests.get(url)
+    list = response.json()
+    movies = []
+    for movie in list["items"]:
+        movies.append((movie["id"], movie["title"]))
 
-for movie in data:
-    poster_filepath = path + "/" + movie[1] + ".jpg"
-    if not os.path.isfile(poster_filepath):
-        driver.get(BASE_LINK + str(movie[0]))
-        poster_popup = driver.wait.until(
-            EC.presence_of_element_located(
-                (
-                    By.XPATH,
-                    "/html/body/div[1]/main/section/div[2]/div/div/section/div[1]/div[1]",
-                )
-            )
+    return movies
+
+
+def get_poster_links():
+    movies = get_movies()
+    bar = ChargingBar("Replacing movie ids with poster urls", max=len(movies))
+    poster_links = []
+    for movie in movies:
+        url = (
+            "https://api.themoviedb.org/3/movie/"
+            + str(movie[0])
+            + "/images?api_key="
+            + API_KEY
+            + "&language=en-US&include_image_language=en%2Cnull"
         )
-        poster_popup.click()
-        poster_popup.click()
-        poster_url = driver.wait.until(
-            EC.presence_of_element_located(
-                (By.XPATH, "/html/body/div[10]/div/section/div/div/div/form/p[2]/a",)
-            )
-        ).get_attribute("href")
+        response = requests.get(url)
+        image_links = response.json()
+        poster_link = image_links["posters"][0]["file_path"]
+        poster_link = BASE_IMAGE_LINK + poster_link
+        poster_links.append((poster_link, movie[1].replace(":", " -")))
+        bar.next()
 
-        # Open the url image, set stream to True, this will return the stream content.
-        r = requests.get(poster_url, stream=True)
+    bar.finish()
+    return poster_links
 
-        # Check if the image was retrieved successfully
-        if r.status_code == 200:
-            # Set decode_content value to True, otherwise the downloaded image file's size will be zero.
-            r.raw.decode_content = True
 
-            # Open a local file with wb ( write binary ) permission.
-            with open(poster_filepath, "wb") as f:
-                shutil.copyfileobj(r.raw, f)
+def download_posters():
+    poster_links = get_poster_links()
+    bar = ChargingBar("Downloading posters", max=len(poster_links))
+    for poster in poster_links:
+        poster_filepath = p.joinpath(poster[1] + ".jpg")
+        if not os.path.isfile(poster_filepath):
+            # Open the url image, set stream to True, this will return the stream content.
+            r = requests.get(poster[0], stream=True)
 
-            print("Image sucessfully Downloaded: ", movie[1])
-        else:
-            print("Couldn't be retreived - ", movie[1])
+            # Check if the image was retrieved successfully
+            if r.status_code == 200:
+                # Open a local file with wb ( write binary ) permission.
+                with open(poster_filepath, "wb") as f:
+                    # Set decode_content value to True, otherwise the downloaded image file's size will be zero.
+                    r.raw.decode_content = True
+                    shutil.copyfileobj(r.raw, f)
+        bar.next()
 
-quit()
+    bar.finish()
+
+
+download_posters()
