@@ -5,7 +5,6 @@ import pathlib
 from pathlib import Path
 import tkinter
 from tkinter import filedialog
-import time
 from progress.bar import ChargingBar
 
 BASE_IMAGE_LINK = "https://image.tmdb.org/t/p/original"
