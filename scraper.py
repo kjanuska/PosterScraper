@@ -44,11 +44,15 @@ def get_media_info(list_id):
 
     media = []
     for item in list["items"]:
+        name = item[Media(item["media_type"]).title]
+        name = name.replace(":", " -")
+        name = name.replace("/", "-")
         info = (
             str(item["id"]),
             item["media_type"],
-            item[Media(item["media_type"]).title].replace(":", " -"),
+            name,
         )
+
         if item["media_type"] == "movie":
             info = info + (item["poster_path"],)
 
