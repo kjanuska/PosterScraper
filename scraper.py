@@ -2,6 +2,7 @@ import requests
 import shutil
 import pathlib
 import json
+import csv
 from pathlib import Path
 import tkinter
 from tkinter import filedialog
@@ -131,6 +132,39 @@ def download_posters():
         bar.next()
 
     bar.finish()
+
+
+def add_to_list():
+    r = requests.get(
+        "https://api.themoviedb.org/3/authentication/token/new?api_key=" + API_KEY
+    )
+    if r.status_code == 200:
+        response = r.json()
+    TOKEN = response["request_token"]
+    print("https://www.themoviedb.org/authenticate/" + TOKEN)
+    input("Press enter!")
+    p = requests.post(
+        "https://api.themoviedb.org/3/authentication/session/new?api_key=" + API_KEY,
+        json={"request_token": TOKEN},
+    )
+    if p.status_code == 200:
+        response = p.json()
+    SESSION_ID = response["session_id"]
+
+    with open("movies.csv") as ids:
+        reader = csv.reader(ids)
+        data = list(reader)
+
+    for id in data:
+        p = requests.post(
+            "https://api.themoviedb.org/3/list/"
+            + MOVIE_LIST_ID
+            + "/add_item?api_key="
+            + API_KEY
+            + "&session_id="
+            + SESSION_ID,
+            json={"media_id": id[0]},
+        )
 
 
 download_posters()
