@@ -3,13 +3,14 @@ import shutil
 import pathlib
 import json
 import csv
+import os
 from pathlib import Path
 import tkinter
 from tkinter import filedialog
 from progress.bar import ChargingBar
 
 
-API_KEY = "4bbd5cbd9da6580bf6bda048d43d8338"
+API_KEY = os.environ.get(API_KEY)
 MOVIE_LIST_ID = "7054979"
 TV_LIST_ID = "7054980"
 
